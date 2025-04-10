@@ -3,16 +3,16 @@ import logging
 import os
 import shutil
 from contextlib import AsyncExitStack
-from typing import Any
+from typing import Any, List
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from .tool import Tool
+from .mcp_tool import MCPTool
 
 
-class Server:
-    """Manages MCP server connections and tool execution."""
+class MCPClient:
+    """MCPClient manages connections to MCP server."""
 
     def __init__(self, name: str, config: dict[str, Any]) -> None:
         self.name: str = name
@@ -54,7 +54,7 @@ class Server:
             await self.cleanup()
             raise
 
-    async def list_tools(self) -> list[Any]:
+    async def list_tools(self) -> List[MCPTool]:
         """List available tools from the server.
 
         Returns:
@@ -72,7 +72,7 @@ class Server:
         for item in tools_response:
             if isinstance(item, tuple) and item[0] == "tools":
                 for tool in item[1]:
-                    tools.append(Tool(tool.name, tool.description, tool.inputSchema))
+                    tools.append(MCPTool(tool.name, tool.description, tool.inputSchema))
 
         return tools
 

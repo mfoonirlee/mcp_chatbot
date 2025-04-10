@@ -2,16 +2,27 @@
 
 This project demonstrates how to integrate the Model Context Protocol (MCP) with customized LLM (e.g. Qwen), creating a powerful chatbot that can interact with various tools through MCP servers. The implementation showcases the flexibility of MCP by enabling LLMs to use external tools seamlessly.
 
-For Chinese version, please refer to [README_ZH.md](README_ZH.md).
+> [!TIP]
+> For Chinese version, please refer to [README_ZH.md](README_ZH.md).
 
 ## Overview
 
+**Workflow Tracer Example**
+
+<img src="assets/single_prompt_demo.png" width="500">
+
+- 🚩 Update (2025-04-10): 
+  - More complex LLM response parsing, supporting multiple MCP tool calls and multiple chat iterations.
+  - Added single prompt examples with both regular and streaming modes.
+  - Added interactive terminal chatbot examples.
+
 This project includes:
 
-- A simple CLI chatbot interface
-- Integration with Markdown processing tools via MCP
-- Support for customized LLM (e.g. Qwen)
-- Example implementation for processing and summarizing Markdown files (**very simple, just for demo**)
+- Simple/Complex CLI chatbot interface
+- Integration with some builtin MCP Server like (Markdown processing tools)
+- Support for customized LLM (e.g. Qwen) and Ollama
+- Example scripts for single prompt processing in both regular and streaming modes
+- Interactive terminal chatbot with regular and streaming response modes
 
 ## Requirements
 
@@ -73,6 +84,8 @@ This project includes:
      LLM_MODEL_NAME=your_llm_model_name_here
      LLM_BASE_URL=your_llm_base_url_here
      LLM_API_KEY=your_llm_api_key_here
+     OLLAMA_MODEL_NAME=your_ollama_model_name_here
+     OLLAMA_BASE_URL=your_ollama_base_url_here
      MARKDOWN_FOLDER_PATH=/path/to/your/markdown/folder
      RESULT_FOLDER_PATH=/path/to/your/result/folder
      ```
@@ -116,49 +129,82 @@ Before running the application, you need to modify the following:
 You can run the following command to check your configuration:
 
 ```bash
-bash check.sh
+bash scripts/check.sh
 ```
 
 ## Usage
 
-### Basic Chatbot
+### Unit Test
 
-To run the basic chatbot interface:
-
-```bash
-python main.py
-```
-
-This will start an interactive session where you can chat with the AI. The AI has access to the tools provided by the configured MCP servers.
-
-### Running the Example
-
-To run the provided example that summarizes Markdown content:
+You can run the following command to run the unit test:
 
 ```bash
-python run_example.py
+bash scripts/unittest.sh
 ```
 
-This script will:
+### Examples
 
-1. Initialize the MCP servers
-2. Connect to the Qwen API
-3. Process the Markdown files from the configured directory
-4. Generate a summary in Chinese
+#### Single Prompt Examples
+
+The project includes two single prompt examples:
+
+1. **Regular Mode**: Process a single prompt and display the complete response
+   ```bash
+   python example/single_prompt/single_prompt.py
+   ```
+
+2. **Streaming Mode**: Process a single prompt with real-time streaming output
+   ```bash
+   python example/single_prompt/single_prompt_stream.py
+   ```
+
+Both examples accept an optional `--llm` parameter to specify which LLM provider to use:
+```bash
+python example/single_prompt/single_prompt.py --llm=ollama
+```
+
+> [!NOTE]
+> For more details, see the [Single Prompt Example README](example/single_prompt/README.md).
+
+#### Terminal Chatbot Examples
+
+The project includes two interactive terminal chatbot examples:
+
+1. **Regular Mode**: Interactive terminal chat with complete responses
+   ```bash
+   python example/chatbot_terminal/chatbot_terminal.py
+   ```
+
+2. **Streaming Mode**: Interactive terminal chat with streaming responses
+   ```bash
+   python example/chatbot_terminal/chatbot_terminal_stream.py
+   ```
+
+Both examples accept an optional `--llm` parameter to specify which LLM provider to use:
+```bash
+python example/chatbot_terminal/chatbot_terminal.py --llm=ollama
+```
+
+> [!NOTE]
+> For more details, see the [Terminal Chatbot Example README](example/chatbot_terminal/README.md).
+
+</details>
 
 ## Project Structure
 
-- `main.py`: Entry point for the interactive chatbot
-- `run_example.py`: Example script showing how to use the system for a specific task
 - `mcp_chatbot/`: Core library code
   - `chat/`: Chat session management
   - `config/`: Configuration handling
   - `llm/`: LLM client implementation
-  - `mcp_server/`: MCP server and tool integration
+  - `mcp/`: MCP client and tool integration
+  - `utils/`: Utility functions (e.g. `WorkflowTrace` and `StreamPrinter`)
 - `mcp_servers/`: Custom MCP servers implementation
   - `markdown_processor.py`: Server for processing Markdown files
   - `servers_config.json`: Configuration for MCP servers
 - `data-example/`: Example Markdown files for testing
+- `example/`: Example scripts for different use cases
+  - `single_prompt/`: Single prompt processing examples (regular and streaming)
+  - `chatbot_terminal/`: Interactive terminal chatbot examples (regular and streaming)
 
 ## Extending the Project
 
@@ -167,6 +213,7 @@ You can extend this project by:
 1. Adding new MCP servers in the `mcp_servers/` directory
 2. Updating the `servers_config.json` to include your new servers
 3. Implementing new functionalities in the existing servers
+4. Creating new examples based on the provided templates
 
 ## Troubleshooting
 

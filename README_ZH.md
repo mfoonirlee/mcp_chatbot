@@ -2,14 +2,27 @@
 
 本项目演示了如何将模型上下文协议（Model Context Protocol，MCP）与定制化 LLM（例如 Qwen）集成，创建一个能够通过 MCP 服务器与各种工具交互的强大聊天机器人。该实现展示了 MCP 的灵活性，使大型语言模型能够无缝使用外部工具。
 
+> [!TIP]
+> 更多详情，请参阅[英文版 README](README.md)。
+
 ## 概述
+
+**Workflow Tracer Example**
+
+<img src="assets/single_prompt_demo.png" width="500">
+
+- 🚩 Update (2025-04-10): 
+  - 更复杂的 LLM 响应解析，支持多个 MCP 工具调用和多个聊天迭代。
+  - 添加了单一提示示例，支持常规模式和流式模式。
+  - 添加了交互式终端聊天机器人示例。
 
 本项目包括：
 
-- 简单的命令行聊天机器人界面
-- 通过 MCP 集成 Markdown 处理工具
-- 支持定制化 LLM（例如 Qwen）
-- 用于处理和总结 Markdown 文件的 MCP 示例实现（非常简单，仅用于演示）
+- 简单/复杂命令行聊天机器人界面
+- 通过 MCP 集成一些内置的 MCP 服务器（例如 Markdown 处理工具）
+- 支持定制化 LLM（例如 Qwen）和 Ollama
+- 提供单一提示处理的示例脚本，包括常规模式和流式模式
+- 交互式终端聊天机器人，支持常规和流式响应模式
 
 ## 系统要求
 
@@ -71,6 +84,8 @@
      LLM_MODEL_NAME=你的LLM模型名称
      LLM_BASE_URL=你的LLM API地址
      LLM_API_KEY=你的LLM API密钥
+     OLLAMA_MODEL_NAME=你的ollama模型名称
+     OLLAMA_BASE_URL=你的ollama API地址
      MARKDOWN_FOLDER_PATH=/你的/markdown/文件夹/路径
      RESULT_FOLDER_PATH=/你的/结果/文件夹/路径
      ```
@@ -114,51 +129,91 @@
 你可以通过运行：
 
 ```bash
-bash check.sh
+bash scripts/check.sh
 ```
 
 来检查您的配置是否正确。
 
 ## 使用方法
 
-### 基本聊天机器人
+### 单元测试
 
-要运行基本的聊天机器人界面：
-
-```bash
-python main.py
-```
-
-这将启动一个交互式会话，您可以与 AI 聊天。AI 可以访问由配置的 MCP 服务器提供的工具。
-
-### 运行示例
-
-要运行提供的总结 Markdown 内容的示例：
+我添加了一些非常简单的单元测试，你可以通过：
 
 ```bash
-python run_example.py
+bash scripts/unittest.sh
 ```
 
-该脚本将：
+来运行它们。
 
-1. 初始化 MCP 服务器
-2. 连接到通义千问 API
-3. 处理来自配置目录的 Markdown 文件
-4. 生成中文摘要
+### 示例
+
+#### 单一提示示例
+
+项目包含两个单一提示示例：
+
+1. **常规模式**：处理单一提示并显示完整响应
+   ```bash
+   python example/single_prompt/single_prompt.py
+   ```
+
+2. **流式模式**：处理单一提示并提供实时流式输出
+   ```bash
+   python example/single_prompt/single_prompt_stream.py
+   ```
+
+两个示例都接受可选的 `--llm` 参数来指定要使用的 LLM 提供者：
+```bash
+python example/single_prompt/single_prompt.py --llm=ollama
+```
+
+> [!NOTE]
+> 更多详情，请参阅[单一提示示例 README](example/single_prompt/README_ZH.md)。
+
+#### 终端聊天机器人示例
+
+项目包含两个交互式终端聊天机器人示例：
+
+1. **常规模式**：带有完整响应的交互式终端聊天
+   ```bash
+   python example/chatbot_terminal/chatbot_terminal.py
+   ```
+
+2. **流式模式**：带有流式响应的交互式终端聊天
+   ```bash
+   python example/chatbot_terminal/chatbot_terminal_stream.py
+   ```
+
+两个示例都接受可选的 `--llm` 参数来指定要使用的 LLM 提供者：
+```bash
+python example/chatbot_terminal/chatbot_terminal.py --llm=ollama
+```
+
+两个示例都接受可选的 `--no-workflow` 参数来隐藏工作流程跟踪：
+```bash
+python example/chatbot_terminal/chatbot_terminal.py --no-workflow
+```
+
+> [!NOTE]
+> 更多详情，请参阅[终端聊天机器人示例 README](example/chatbot_terminal/README_ZH.md)。
+
+</details>
 
 ## 项目结构
 
-- `main.py`：交互式聊天机器人的入口点
-- `run_example.py`：展示如何将系统用于特定任务的示例脚本
 - `mcp_chatbot/`：核心库代码
   - `chat/`：聊天会话管理
   - `config/`：配置处理
   - `llm/`：LLM 客户端实现
-  - `mcp_server/`：MCP 服务器和工具集成
+  - `mcp/`：MCP 客户端和工具集成
+  - `utils/`：实用工具（例如 `WorkflowTrace` 和 `StreamPrinter`）
 - `mcp_servers/`：自定义 MCP 服务器实现
   - `markdown_processor.py`：处理 Markdown 文件的服务器
   - `servers_config.json`：MCP 服务器配置
 - `data-example/`：用于测试的示例 Markdown 文件
+- `example/`：不同用例的示例脚本
+  - `single_prompt/`：单一提示处理示例（常规和流式）
+  - `chatbot_terminal/`：交互式终端聊天机器人示例（常规和流式）
 
 ## 扩展项目
 
@@ -167,6 +222,7 @@ python run_example.py
 1. 在 `mcp_servers/` 目录中添加新的 MCP 服务器
 2. 更新 `servers_config.json` 以包含您的新服务器
 3. 在现有服务器中实现新功能
+4. 基于提供的模板创建新的示例
 
 ## 故障排除
 
