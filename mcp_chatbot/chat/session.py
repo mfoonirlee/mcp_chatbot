@@ -440,13 +440,13 @@ class ChatSession:
         max_iterations: int = 10,
     ) -> AsyncGenerator[Union[str, Tuple[str, str]], None]:
         """Send message and get streaming response, with optional tool processing.
-        
+
         Args:
             user_message: The user's message
             auto_process_tools: Whether to auto-process tool calls
             show_workflow: Whether to show the workflow
             max_iterations: Maximum number of tool iterations (default: 10)
-            
+
         Yields:
             Response text chunks or tuples of (status, text_chunk)
         """
@@ -455,41 +455,41 @@ class ChatSession:
             if not success:
                 yield ("error", "Failed to initialize chat session")
                 return
-            
+
         # Initialize the workflow tracer
         self.workflow_tracer = WorkflowTracer()
-        
+
         # Record user query
         self.workflow_tracer.add_event(
             WorkflowEventType.USER_QUERY,
             user_message[:50] if len(user_message) > 50 else user_message,
         )
-        
+
         self.messages.append({"role": "user", "content": user_message})
-        
+
         # Record LLM thinking
         self.workflow_tracer.add_event(
-            WorkflowEventType.LLM_THINKING, 
-            "LLM is processing your query..."
+            WorkflowEventType.LLM_THINKING, "LLM is processing your query..."
         )
-        
-        # Get initial response stream
+
+        #### Get initial response stream ####
         yield ("status", "Thinking...")
         response_chunks = []
         for chunk in self.llm_client.get_stream_response(self.messages):
             response_chunks.append(chunk)
             yield ("response", chunk)
-        
+        #####################################
+
         llm_response = "".join(response_chunks)
-        
+
         # Record LLM response
         self.workflow_tracer.add_event(
             WorkflowEventType.LLM_RESPONSE,
             llm_response[:50] if len(llm_response) > 50 else llm_response,
         )
-        
+
         self.messages.append({"role": "assistant", "content": llm_response})
-        
+
         if not auto_process_tools:
             # Record final response
             self.workflow_tracer.add_event(
@@ -502,11 +502,12 @@ class ChatSession:
 
         # Process tool calls
         iteration = 0
-        while iteration < max_iterations:  # Limit max iterations to prevent infinite loops
-            tool_calls, has_tools = await self.process_tool_calls(llm_response)
+        while iteration < max_iterations:
+            # Extract tool call data
+            tool_call_data_list = self._extract_tool_calls(llm_response)
 
-            if not has_tools:
-                # Record final response
+            if not tool_call_data_list:
+                # No tool calls, return final result
                 self.workflow_tracer.add_event(
                     WorkflowEventType.FINAL_RESPONSE,
                     f"Final response after {iteration} tool iterations",
@@ -514,22 +515,36 @@ class ChatSession:
                 if show_workflow:
                     print(self.workflow_tracer.render_tree_workflow())
                 return
-            
-            # Record tool calls
-            for i, tool_call in enumerate(tool_calls):
+
+            # Process each tool call separately, and pass detailed information to the UI
+            tool_calls = []
+            for idx, tool_call_data in enumerate(tool_call_data_list):
+                tool_name = tool_call_data["tool"]
+                arguments = tool_call_data["arguments"]
+
+                # Pass tool name and arguments to the UI
+                yield ("tool_call", tool_name)
+                yield ("tool_arguments", json.dumps(arguments))
+
                 # Record tool call request
                 self.workflow_tracer.add_event(
                     WorkflowEventType.TOOL_CALL,
-                    f"Call {i + 1}: {tool_call.tool}",
-                    {"tool_name": tool_call.tool, "arguments": tool_call.arguments},
+                    f"Call {idx + 1}: {tool_name}",
+                    {"tool_name": tool_name, "arguments": arguments},
                 )
-                
+
+                # Pass tool execution status to the UI
+                yield ("tool_execution", f"Executing {tool_name}...")
+
                 # Record tool execution
                 self.workflow_tracer.add_event(
-                    WorkflowEventType.TOOL_EXECUTION, 
-                    f"Executing {tool_call.tool}..."
+                    WorkflowEventType.TOOL_EXECUTION, f"Executing {tool_name}..."
                 )
-                
+
+                # Execute tool call
+                tool_call = await self._execute_tool_call(tool_call_data)
+                tool_calls.append(tool_call)
+
                 # Record tool result
                 success = tool_call.is_successful()
                 self.workflow_tracer.add_event(
@@ -540,40 +555,47 @@ class ChatSession:
                         "result": str(tool_call.result)[:100] if success else None,
                     },
                 )
-            
-            # Send processing status
-            yield ("tool_processing", "Processing tool calls...")
-            
+
+                # Pass tool result status to the UI
+                yield (
+                    "tool_results",
+                    json.dumps(
+                        {
+                            "success": success,
+                            "result": str(tool_call.result)
+                            if success
+                            else str(tool_call.error),
+                        }
+                    ),
+                )
+
             # Format tool results and add to message history
             tool_results = self._format_tool_results(tool_calls)
             self.messages.append({"role": "system", "content": tool_results})
-            
-            # Send tool results status
-            yield ("tool_results", tool_results)
-            
-            # Record LLM thinking again
+
+            # Record LLM thinking
             self.workflow_tracer.add_event(
                 WorkflowEventType.LLM_THINKING,
                 f"LLM processing tool results (iteration {iteration + 1})...",
             )
-            
+
             # Get next response stream
             yield ("status", "Processing results...")
             response_chunks = []
             for chunk in self.llm_client.get_stream_response(self.messages):
                 response_chunks.append(chunk)
                 yield ("response", chunk)
-            
+
             llm_response = "".join(response_chunks)
-            
+
             # Record LLM response
             self.workflow_tracer.add_event(
                 WorkflowEventType.LLM_RESPONSE,
                 llm_response[:50] if len(llm_response) > 50 else llm_response,
             )
-            
+
             self.messages.append({"role": "assistant", "content": llm_response})
-            
+
             # Check if next response still contains tool calls
             next_tool_calls = self._extract_tool_calls(llm_response)
             if not next_tool_calls:
@@ -585,5 +607,5 @@ class ChatSession:
                 if show_workflow:
                     print(self.workflow_tracer.render_tree_workflow())
                 return
-            
+
             iteration += 1
