@@ -43,6 +43,12 @@
 1.  **从项目根目录运行 Streamlit 应用：**
 
     ```bash
+    # 激活虚拟环境
+    python -m venv streamlit-env
+    source streamlit-env/bin/activate
+    # 安装 streamlit
+    pip install streamlit
+    # 运行 streamlit
     streamlit run example/chatbot_streamlit/app.py
     ```
 
@@ -53,6 +59,7 @@
     - 点击 **Clear Chat** 开始新的对话。
 
 3.  **开始聊天**：在底部的聊天输入框中输入你的问题。
+4.  **常见问题**：LLM回答不对的情况可能需要在MCP tab 【refresh tools】
 
 ## 工作原理
 
